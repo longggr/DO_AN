@@ -1,0 +1,97 @@
+server:
+  port: 8080
+  servlet:
+    context-path: /cms
+spring:
+  application:
+    name: SmashHub
+  config:
+    import:
+      - optional:file:.env[.properties]
+  datasource:
+    url: ${DB_URL:${SPRING_DATASOURCE_URL:jdbc:mysql://localhost:3306/badminton_shop}}
+    username: ${DB_USERNAME:${SPRING_DATASOURCE_USERNAME:root}}
+    password: ${DB_PASSWORD:${SPRING_DATASOURCE_PASSWORD:root}}
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: true
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+    baseline-version: 0
+    locations: classpath:db/migration
+  servlet:
+    multipart:
+      enabled: true
+      # Giới hạn kích thước 1 file upload (phải khớp với MAX_FILE_SIZE trong FileServiceImpl = 5 MB).
+      max-file-size: 5MB
+      # Giới hạn toàn bộ request multipart (dư chút cho metadata form).
+      max-request-size: 10MB
+  mail:
+    host: ${MAIL_HOST:smtp.gmail.com}
+    port: ${MAIL_PORT:587}
+    username: ${MAIL_USERNAME:${SPRING_MAIL_USERNAME:thanhlongbc28@gmail.com}}
+    password: ${MAIL_PASSWORD:${SPRING_MAIL_PASSWORD:}}
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+            required: true
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:root}
+
+jwt:
+  signerKey: ${JWT_SIGNER_KEY:${JWT_SIGNERKEY:default_secret_signer_key_must_be_overridden_in_env_file_123456}}
+
+google:
+  client-id: ${GOOGLE_CLIENT_ID:}
+  client-secret: ${GOOGLE_CLIENT_SECRET:}
+
+app:
+  otp:
+    expiration-minutes: 5
+    resend-cooldown-seconds: 60
+  login:
+    max-failed-attempts: 5
+    failure-window-minutes: 15
+    lockout-minutes: 15
+
+cloudinary:
+  cloud-name: ${CLOUDINARY_CLOUD_NAME:}
+  api-key: ${CLOUDINARY_API_KEY:}
+  api-secret: ${CLOUDINARY_API_SECRET:}
+  # Thư mục gốc trên Cloudinary. Các sub-folder (products/, brands/, reviews/)
+  # được ghép tự động bởi FileFolder.resolve(rootFolder).
+  folder: ${CLOUDINARY_FOLDER:smashhub}
+
+  order:
+    expire-cron: ${ORDER_EXPIRE_CRON:0 * * * * ?}
+
+# [MỚI] Cấu hình Giao Hàng Nhanh (GHN) API
+ghn:
+  base-url: ${GHN_BASE_URL:https://dev-online-gateway.ghn.vn/shiip/public-api}
+  token: ${GHN_TOKEN:sample_ghn_token}
+  shop-id: ${GHN_SHOP_ID:123456}
+  from-district-id: ${GHN_FROM_DISTRICT_ID:1442}
+  from-ward-code: ${GHN_FROM_WARD_CODE:20101}
+  default-weight-gram: ${GHN_DEFAULT_WEIGHT:500}
+  default-length-cm: ${GHN_DEFAULT_LENGTH:30}
+  default-width-cm: ${GHN_DEFAULT_WIDTH:20}
+  default-height-cm: ${GHN_DEFAULT_HEIGHT:10}
+  webhook-token: ${GHN_WEBHOOK_TOKEN:ghn_webhook_secret_key}
+  sync-cron: ${GHN_SYNC_CRON:0 0 3 * * ?}
+
+# [MỚI] Cấu hình Cổng thanh toán VNPay
+vnpay:
+  tmn-code: ${VNPAY_TMN_CODE:DEMOVNPAY}
+  hash-secret: ${VNPAY_HASH_SECRET:DEMOVNPAYSECRETKEY1234567890ABCDEF}
+  pay-url: ${VNPAY_PAY_URL:https://sandbox.vnpayment.vn/paymentv2/vpcpay.html}
+  api-url: ${VNPAY_API_URL:https://sandbox.vnpayment.vn/merchant_webapi/api/transaction}
+  return-url: ${VNPAY_RETURN_URL:http://localhost:3000/payment/vnpay/return}
+  expire-minutes: ${VNPAY_EXPIRE_MINUTES:15}
