@@ -16,7 +16,9 @@ public enum FileFolder {
     REVIEW("reviews"),
     AVATAR("avatars"),
     // Ảnh không thuộc loại nào ở trên (banner, ảnh tạm...)
-    OTHER("others");
+    OTHER("others"),
+    // Ảnh tin nhắn tư vấn hỗ trợ khách hàng
+    CHAT("chat");
 
 
     String path;

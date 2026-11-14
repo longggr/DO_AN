@@ -145,6 +145,17 @@ public enum ErrorCode {
     ADDRESS_ACCESS_DENIED(2604, "You do not have permission to access this address", HttpStatus.FORBIDDEN),
     ADDRESS_LOCATION_MISMATCH(2605, "District does not belong to province or ward does not belong to district", HttpStatus.BAD_REQUEST),
     LOCATION_SYNC_FAILED(2606, "Failed to sync locations from GHN", HttpStatus.INTERNAL_SERVER_ERROR),
+
+    // [MỚI] Chat module (27xx)
+    CONVERSATION_NOT_FOUND(2700, "Conversation not found", HttpStatus.NOT_FOUND),
+    CHAT_ACCESS_DENIED(2701, "You do not have permission to access this conversation", HttpStatus.FORBIDDEN),
+    CHAT_RATE_LIMIT_EXCEEDED(2702, "Message rate limit exceeded. Please slow down", HttpStatus.TOO_MANY_REQUESTS),
+    CHAT_MESSAGE_INVALID(2703, "Invalid message content or format", HttpStatus.BAD_REQUEST),
+    CHAT_IMAGE_URL_INVALID(2704, "Attachment URL must be hosted on Cloudinary under smashhub/chat", HttpStatus.BAD_REQUEST),
+    CHAT_PRODUCT_NOT_AVAILABLE(2705, "Referenced product is not available", HttpStatus.BAD_REQUEST),
+    CHAT_ORDER_NOT_OWNED(2706, "You cannot share an order that does not belong to you", HttpStatus.FORBIDDEN),
+    CONVERSATION_STATUS_INVALID(2707, "Invalid conversation status transition", HttpStatus.BAD_REQUEST),
+    CHAT_ATTACHMENT_RATE_LIMITED(2708, "Too many file upload requests. Please try again later", HttpStatus.TOO_MANY_REQUESTS),
     ;
 
     private int code = 1000;

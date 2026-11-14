@@ -75,6 +75,7 @@ public class SecurityConfig {
                                 request -> request.requestMatchers(HttpMethod.POST, PUBLIC_POST_ENDPOINTS).permitAll()
                                                 .requestMatchers(HttpMethod.GET, PUBLIC_GET_ENDPOINTS).permitAll()
                                                 .requestMatchers(PUBLIC_CART_ENDPOINTS).permitAll()
+                                                .requestMatchers("/ws-smashhub/**").permitAll()
                                                 .anyRequest().authenticated());
 
                 httpSecurity.oauth2ResourceServer(oauth2 -> oauth2

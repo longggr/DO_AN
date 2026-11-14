@@ -95,3 +95,98 @@ vnpay:
   api-url: ${VNPAY_API_URL:https://sandbox.vnpayment.vn/merchant_webapi/api/transaction}
   return-url: ${VNPAY_RETURN_URL:http://localhost:3000/payment/vnpay/return}
   expire-minutes: ${VNPAY_EXPIRE_MINUTES:15}
+
+# Cấu hình Real-time Chat Module (SmashHub Support)
+smashhub:
+  chat:
+    allowed-origins:
+      - ${CHAT_ALLOWED_ORIGIN_1:http://localhost:3000}
+      - ${CHAT_ALLOWED_ORIGIN_2:http://localhost:5173}
+      - ${CHAT_ALLOWED_ORIGIN_3:http://localhost:8080}
+      - ${CHAT_ALLOWED_ORIGIN_4:http://localhost:8443}
+      - ${CHAT_ALLOWED_ORIGIN_5:http://localhost:*}
+    cluster:
+      enable-redis-pubsub: ${CHAT_CLUSTER_REDIS:false} # Bật true khi chạy cụm nhiều instance Spring Boot (dùng Redis Pub/Sub, không cần RabbitMQ)
+      redis-channel: smashhub:chat:cluster:broadcast
+    rate-limit:
+      max-messages: 15
+      window-seconds: 10
+    attachment:
+      max-uploads-per-minute: 5
+
+  # ============================================================================
+  # CẤU HÌNH TRỢ LÝ AI & QUẢN TRỊ CHI PHÍ / QUOTA GEMINI (SmashHub AI)
+  # ============================================================================
+  ai:
+    enabled: ${AI_ENABLED:true}
+    api-key: ${GEMINI_API_KEY:}
+    base-url: ${GEMINI_BASE_URL:https://generativelanguage.googleapis.com}
+    chat-model: ${GEMINI_CHAT_MODEL:gemini-1.5-flash}
+    embedding-model: ${GEMINI_EMBEDDING_MODEL:text-embedding-004}
+
+    # 1. Giới hạn toàn cục theo Model (RPM, TPM, RPD) - Mặc định đệm an toàn 20% dưới quota Google AI Studio
+    limits:
+      gemini-1.5-flash:
+        rpm: ${AI_FLASH_RPM:12}          # Quota thật 15 -> Cấu hình 12 (đệm an toàn 20%)
+        tpm: ${AI_FLASH_TPM:800000}      # Quota thật 1,000,000 -> Cấu hình 800,000
+        rpd: ${AI_FLASH_RPD:1200}        # Quota thật 1,500 -> Cấu hình 1,200
+      gemini-1.5-pro:
+        rpm: ${AI_PRO_RPM:2}             # Quota thật 2 RPM
+        tpm: ${AI_PRO_TPM:25000}         # Quota thật 32,000 TPM
+        rpd: ${AI_PRO_RPD:40}            # Quota thật 50 RPD
+      text-embedding-004:
+        rpm: ${AI_EMBED_RPM:1200}        # Quota thật 1,500 RPM
+        tpm: ${AI_EMBED_TPM:800000}      # Quota thật 1,000,000 TPM
+        rpd: ${AI_EMBED_RPD:10000}
+
+    # 2. Giới hạn cá nhân theo từng Khách hàng
+    user-limits:
+      rpm: ${AI_USER_RPM:5}              # Tối đa 5 câu hỏi AI / phút / user
+      rpd: ${AI_USER_RPD:30}             # Tối đa 30 câu hỏi AI / ngày / user
+
+    # 3. Ngân sách chi phí và ngưỡng cảnh báo theo ngày
+    budget:
+      daily-limit-usd: ${AI_DAILY_BUDGET_USD:2.00}
+      input-cost-per-million: 0.075     # $0.075 / 1M input tokens (Gemini 1.5 Flash)
+      output-cost-per-million: 0.300    # $0.300 / 1M output tokens (Gemini 1.5 Flash)
+      warning-threshold-percent: 80.0   # Cảnh báo khi đạt 80% ngân sách
+      cutoff-threshold-percent: 100.0   # Tự động ngắt AI chuyển HUMAN khi đạt 100%
+
+    # 4. Hàng đợi có giới hạn trên ThreadPoolTaskExecutor riêng biệt
+    executor:
+      core-pool-size: ${AI_CORE_POOL_SIZE:4}
+      max-pool-size: ${AI_MAX_POOL_SIZE:8}
+      queue-capacity: ${AI_QUEUE_CAPACITY:50}
+      keep-alive-seconds: 60
+
+    # 5. Retry có kiểm soát (Chỉ retry khi 429/503/timeout, tôn trọng retryDelay)
+    retry:
+      max-attempts: 2
+      backoff-millis: 1000
+      max-backoff-millis: 4000
+      jitter-factor: 0.25
+
+    # 6. Circuit Breaker (Resilience4j)
+    circuit-breaker:
+      sliding-window-size: 10
+      failure-rate-threshold: 50.0
+      wait-duration-in-open-state-seconds: 30
+      permitted-number-of-calls-in-half-open-state: 3
+
+    # 7. Cache TTL
+    cache:
+      faq-ttl-seconds: 86400            # Cache câu trả lời FAQ trong 24 giờ
+      embedding-ttl-seconds: 604800     # Cache vector embedding trong 7 ngày
+
+    # 8. Ước lượng Token đầu vào
+    token-estimation:
+      chars-per-token: 0.35             # ~1 ký tự = 0.35 token cho tiếng Việt
+
+    # 9. RAG Catalog & Kiến thức tĩnh (Phase 1)
+    rag:
+      max-context-products: 3
+      max-context-orders: 2
+      similarity-threshold: 0.65
+      max-history-messages: 6
+    vectorstore:
+      file-path: ${AI_VECTORSTORE_FILE_PATH:data/vectorstore.json}
