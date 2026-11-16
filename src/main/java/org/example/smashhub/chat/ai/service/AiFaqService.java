@@ -36,6 +36,7 @@ public class AiFaqService {
     AiProperties aiProperties;
 
     @Autowired(required = false)
+    @lombok.experimental.NonFinal
     MeterRegistry meterRegistry;
 
     /**

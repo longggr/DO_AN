@@ -241,7 +241,8 @@ public class AiChatService {
 
         ChatMessage saved = chatMessageRepository.save(message);
         LocalDateTime now = LocalDateTime.now();
-        conversationRepository.updateOnAiMessage(conversationId, answerText, now);
+        String preview = answerText != null && answerText.length() > 250 ? answerText.substring(0, 247) + "..." : answerText;
+        conversationRepository.updateOnAiMessage(conversationId, preview, now);
 
         ChatMessageResponse response = chatMapper.toChatMessageResponse(saved);
         response.setSenderUsername("Trợ lý AI SmashHub");

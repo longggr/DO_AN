@@ -29,8 +29,11 @@ import org.example.smashhub.chat.enums.ConversationStatus;
 import org.example.smashhub.chat.enums.MessageType;
 import org.example.smashhub.chat.enums.SenderRole;
 import org.example.smashhub.chat.mapper.ChatMapper;
+import org.example.smashhub.chat.enums.AiFeedback;
+import org.example.smashhub.chat.enums.HandlerMode;
 import org.example.smashhub.chat.repository.ChatMessageRepository;
 import org.example.smashhub.chat.repository.ConversationRepository;
+import org.example.smashhub.chat.security.OrderOwnership;
 import org.example.smashhub.chat.service.ChatBroadcaster;
 import org.example.smashhub.chat.service.ChatRedisService;
 import org.example.smashhub.chat.service.ChatService;
@@ -144,6 +147,46 @@ public class ChatServiceImpl implements ChatService {
                     throw new AppException(ErrorCode.CHAT_MESSAGE_INVALID);
                 }
                 content = sanitizeText(content.trim());
+
+                // Auto-recovery thông minh:
+                // Nếu khách hàng gửi tin nhắn khi hội thoại đang ở HUMAN:
+                // Tự động khôi phục về AI nếu:
+                // 1. Khách quay lại sau hơn 15 phút (hết phiên cũ)
+                // 2. Không có admin online
+                // 3. Khách chủ động hỏi tư vấn sản phẩm hoặc chào hỏi lại
+                // 4. Lý do chuyển trước đó là do mô hình/hệ thống tạm chuyển (hoặc null)
+                // VÀ tin nhắn không phải là khiếu nại hay yêu cầu gặp người thật.
+                if (senderRole == SenderRole.CUSTOMER && conversation.getHandlerMode() == org.example.smashhub.chat.enums.HandlerMode.HUMAN) {
+                    boolean isHandoffRequest = aiAssistantService.isHumanHandoffIntent(content)
+                            || aiAssistantService.isSensitiveTopicOrOrderMutation(content);
+
+                    if (!isHandoffRequest) {
+                        LocalDateTime lastMsgTime = conversation.getLastMessageAt();
+                        boolean isSessionExpired = lastMsgTime == null || lastMsgTime.isBefore(LocalDateTime.now().minusMinutes(15));
+                        boolean noAdminOnline = !chatRedisService.isAnyAdminOnline();
+                        String lower = content != null ? content.toLowerCase().trim() : "";
+                        boolean isConsultOrGreeting = lower.contains("xin chào") || lower.contains("chào")
+                                || lower.contains("tư vấn") || lower.contains("cần tư vấn") || lower.contains("giá")
+                                || lower.contains("cho mình hỏi") || lower.contains("shop ơi") || lower.contains("ad ơi")
+                                || lower.contains("mua") || lower.contains("vợt") || lower.contains("giày")
+                                || request.getReferencedProductId() != null
+                                || request.getMessageType() == MessageType.PRODUCT_CARD;
+
+                        String hReason = conversation.getHandoffReason();
+                        boolean isSystemOrNullHandoff = hReason == null || "MODEL_REQUESTED".equals(hReason)
+                                || "OUT_OF_DOMAIN".equals(hReason) || "CONSECUTIVE_UNCERTAIN".equals(hReason);
+
+                        if (isSessionExpired || noAdminOnline || isConsultOrGreeting || isSystemOrNullHandoff) {
+                            log.info("Auto-recovering conversationId={} from HUMAN back to AI mode. sessionExpired={}, noAdminOnline={}, isGreeting={}",
+                                    conversation.getId(), isSessionExpired, noAdminOnline, isConsultOrGreeting);
+                            conversationRepository.resetToAiMode(conversation.getId());
+                            conversation.setHandlerMode(org.example.smashhub.chat.enums.HandlerMode.AI);
+                            conversation.setStatus(ConversationStatus.OPEN);
+                            conversation.setAssignedAdmin(null);
+                            conversation.setHandoffReason(null);
+                        }
+                    }
+                }
             }
             case IMAGE -> {
                 if (request.getAttachmentUrl() == null || request.getAttachmentUrl().isBlank()) {
@@ -186,10 +229,10 @@ public class ChatServiceImpl implements ChatService {
                         .orElseThrow(() -> new AppException(ErrorCode.ORDER_NOT_FOUND));
                 // Nếu khách gửi: đơn phải của chính khách; Nếu admin gửi: đơn phải thuộc khách của hội thoại này
                 Long targetCustomerId = conversation.getCustomer().getId();
-                if (senderRole == SenderRole.CUSTOMER && !order.getUser().getId().equals(sender.getId())) {
+                if (senderRole == SenderRole.CUSTOMER && !OrderOwnership.belongsTo(order, sender.getId())) {
                     throw new AppException(ErrorCode.CHAT_ORDER_NOT_OWNED);
                 }
-                if (senderRole == SenderRole.ADMIN && !order.getUser().getId().equals(targetCustomerId)) {
+                if (senderRole == SenderRole.ADMIN && !OrderOwnership.belongsTo(order, targetCustomerId)) {
                     throw new AppException(ErrorCode.CHAT_ORDER_NOT_OWNED);
                 }
                 orderCard = OrderSummaryCardDto.builder()
@@ -257,9 +300,9 @@ public class ChatServiceImpl implements ChatService {
                     convId, sender.getId(), role, savedMessage.getMessageType(), savedMessage.getClientMessageId());
 
             // 8. Chuyển cho Trợ lý AI (nếu handlerMode == AI) hoặc Auto-reply (nếu HUMAN và không có admin online)
-            if (role == SenderRole.CUSTOMER) {
+            if (role == SenderRole.CUSTOMER && savedMessage.getMessageType() == MessageType.TEXT) {
                 org.example.smashhub.chat.enums.HandlerMode mode = conversation.getHandlerMode();
-                if (mode == org.example.smashhub.chat.enums.HandlerMode.AI && savedMessage.getMessageType() == MessageType.TEXT) {
+                if (mode == org.example.smashhub.chat.enums.HandlerMode.AI) {
                     aiAssistantService.handleCustomerMessageAsync(convId, sender, savedMessage.getContent());
                 } else if (!adminOnline) {
                     if (chatRedisService.tryAcquireAutoReplyLock(convId)) {
@@ -584,7 +627,9 @@ public class ChatServiceImpl implements ChatService {
             throw new AppException(ErrorCode.CHAT_ACCESS_DENIED);
         }
 
-        Page<ChatMessage> page = chatMessageRepository.findByConversationId(conversationId, pageable);
+        Page<ChatMessage> page = isAdminOrStaff
+                ? chatMessageRepository.findByConversationId(conversationId, pageable)
+                : chatMessageRepository.findByConversationIdAndVisibleToCustomerTrue(conversationId, pageable);
         List<ChatMessage> messages = page.getContent();
 
         // 1. Thu thập tất cả productIds và orderIds để batch-fetch
@@ -760,7 +805,7 @@ public class ChatServiceImpl implements ChatService {
 
     @Override
     @Transactional
-    public ChatMessageResponse submitMessageFeedback(Long messageId, String currentUsername, org.example.smashhub.chat.enums.AiFeedback feedback) {
+    public ChatMessageResponse submitMessageFeedback(Long messageId, String currentUsername, AiFeedback feedback) {
         ChatMessage message = chatMessageRepository.findById(messageId)
                 .orElseThrow(() -> new AppException(ErrorCode.RESOURCE_NOT_FOUND));
 
@@ -769,8 +814,7 @@ public class ChatServiceImpl implements ChatService {
 
         Conversation conv = message.getConversation();
         boolean isOwner = conv.getCustomer().getId().equals(user.getId());
-        boolean isAdmin = user.getRole() != null &&
-                ("ROLE_ADMIN".equals(user.getRole().getName()) || "ROLE_STAFF".equals(user.getRole().getName()));
+        boolean isAdmin = isUserAdminOrStaff(user);
 
         if (!isOwner && !isAdmin) {
             throw new AppException(ErrorCode.CHAT_ACCESS_DENIED);
@@ -778,6 +822,15 @@ public class ChatServiceImpl implements ChatService {
 
         message.setAiFeedback(feedback);
         ChatMessage saved = chatMessageRepository.save(message);
+
+        if (feedback == AiFeedback.NOT_HELPFUL && conv.getHandlerMode() == HandlerMode.AI) {
+            aiAssistantService.triggerHumanHandoff(
+                    conv.getId(),
+                    conv.getCustomer(),
+                    "Dạ em đã ghi nhận phản hồi. Em xin phép chuyển cuộc trò chuyện sang chuyên viên tư vấn để hỗ trợ bạn trực tiếp ạ!",
+                    "NOT_HELPFUL");
+        }
+
         return chatMapper.toChatMessageResponse(saved);
     }
 
@@ -792,6 +845,30 @@ public class ChatServiceImpl implements ChatService {
             chatBroadcaster.broadcast("/topic/admin/conversations", event);
         });
         return "Updated handler mode to " + mode.name();
+    }
+
+    @Override
+    @Transactional
+    public ConversationResponse switchToAiMode(String currentCustomerUsername) {
+        User customer = findUserByUsername(currentCustomerUsername);
+        Conversation conversation = conversationRepository.findByCustomerId(customer.getId())
+                .orElseThrow(() -> new AppException(ErrorCode.CONVERSATION_NOT_FOUND));
+
+        conversationRepository.resetToAiMode(conversation.getId());
+        conversation.setHandlerMode(org.example.smashhub.chat.enums.HandlerMode.AI);
+        conversation.setStatus(ConversationStatus.OPEN);
+        conversation.setAssignedAdmin(null);
+        conversation.setHandoffReason(null);
+
+        Conversation fresh = conversationRepository.findWithDetailsById(conversation.getId()).orElse(conversation);
+        ConversationUpdateEvent updateEvent = chatMapper.toConversationUpdateEvent(fresh);
+        chatBroadcaster.broadcast("/topic/admin/conversations", updateEvent);
+        chatBroadcaster.broadcast("/topic/conversations/" + conversation.getId() + "/mode", updateEvent);
+
+        ConversationResponse resp = chatMapper.toConversationResponse(fresh);
+        resp.setAdminOnline(chatRedisService.isAnyAdminOnline());
+        log.info("Customer {} explicitly switched conversationId={} to AI mode", currentCustomerUsername, conversation.getId());
+        return resp;
     }
 
     private void registerAfterCommitAction(Runnable action) {

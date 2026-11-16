@@ -37,5 +37,6 @@ public class ChatMessageResponse implements Serializable {
     String aiSources;
     AiFeedback aiFeedback;
     boolean isRead;
+    boolean visibleToCustomer = true;
     LocalDateTime createdAt;
 }

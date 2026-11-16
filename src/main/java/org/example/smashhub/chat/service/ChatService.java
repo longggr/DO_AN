@@ -40,5 +40,7 @@ public interface ChatService {
     ChatMessageResponse submitMessageFeedback(Long messageId, String currentUsername, org.example.smashhub.chat.enums.AiFeedback feedback);
 
     String updateHandlerMode(Long conversationId, org.example.smashhub.chat.enums.HandlerMode mode);
+
+    ConversationResponse switchToAiMode(String currentCustomerUsername);
 }
 

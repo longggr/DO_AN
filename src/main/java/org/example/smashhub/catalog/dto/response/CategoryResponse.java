@@ -23,6 +23,7 @@ public class CategoryResponse implements Serializable {
     Long parentId;
     String parentName;
     Integer displayOrder;
+    String imageUrl;
     @Builder.Default
     List<CategoryResponse> children = Collections.emptyList();
 }

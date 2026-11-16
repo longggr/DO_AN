@@ -175,12 +175,23 @@ public class KnowledgeService {
             Document chunkDoc = newChunks.get(i);
             String chunkHash = (String) chunkDoc.getMetadata().get("contentHash");
 
-            if (oldChunkByHash.containsKey(chunkHash)) {
-                // HASH KHÔNG ĐỔI -> Tái sử dụng embedding cũ, không tốn quota gọi lại API
+            if (oldChunkByHash.containsKey(chunkHash) && oldChunkByHash.get(chunkHash).getEmbeddingJson() != null) {
+                // HASH KHÔNG ĐỔI + đã có embedding -> Tái sử dụng, không tốn quota gọi lại API
                 AiKnowledgeChunk existing = oldChunkByHash.get(chunkHash);
                 seenOldHashes.put(chunkHash, true);
                 chunkDoc.setEmbedding(parseEmbeddingJson(existing.getEmbeddingJson()));
                 docsToVectorStore.add(chunkDoc);
+            } else if (oldChunkByHash.containsKey(chunkHash)) {
+                // HASH KHÔNG ĐỔI nhưng embedding_json = NULL (chunk cũ chưa được embed) -> phải embed lại
+                AiKnowledgeChunk existing = oldChunkByHash.get(chunkHash);
+                seenOldHashes.put(chunkHash, true);
+                log.info("Re-embedding chunk with null embedding_json for docId={}, hash={}", doc.getId(), chunkHash);
+                List<Double> embedding = embeddingService.getEmbedding(chunkDoc.getContent());
+                chunkDoc.setEmbedding(embedding);
+                docsToVectorStore.add(chunkDoc);
+                // Cập nhật embedding_json vào DB
+                existing.setEmbeddingJson(serializeEmbeddingJson(embedding));
+                chunksToSave.add(existing);
             } else {
                 // HASH THAY ĐỔI / CHUNK MỚI -> Gọi Embedding API
                 List<Double> embedding = embeddingService.getEmbedding(chunkDoc.getContent());

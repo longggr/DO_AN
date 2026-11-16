@@ -81,5 +81,9 @@ public class ChatMessage extends BaseEntity {
     @Column(name = "is_read", nullable = false)
     @Builder.Default
     boolean isRead = false;
+
+    @Column(name = "visible_to_customer", nullable = false)
+    @Builder.Default
+    boolean visibleToCustomer = true;
 }
 

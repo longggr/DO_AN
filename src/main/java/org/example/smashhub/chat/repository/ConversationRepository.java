@@ -11,6 +11,7 @@ import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.Optional;
@@ -38,6 +39,7 @@ public interface ConversationRepository extends JpaRepository<Conversation, Long
     );
 
     @Modifying
+    @Transactional
     @Query("UPDATE Conversation c SET " +
            "c.lastMessagePreview = :preview, " +
            "c.lastMessageAt = :now, " +
@@ -52,6 +54,7 @@ public interface ConversationRepository extends JpaRepository<Conversation, Long
     );
 
     @Modifying
+    @Transactional
     @Query(value = "UPDATE conversations SET " +
            "last_message_preview = :preview, " +
            "last_message_at = :now, " +
@@ -68,6 +71,7 @@ public interface ConversationRepository extends JpaRepository<Conversation, Long
     );
 
     @Modifying
+    @Transactional
     @Query("UPDATE Conversation c SET " +
            "c.lastMessagePreview = :preview, " +
            "c.lastMessageAt = :now, " +
@@ -80,6 +84,7 @@ public interface ConversationRepository extends JpaRepository<Conversation, Long
     );
 
     @Modifying
+    @Transactional
     @Query("UPDATE Conversation c SET " +
            "c.lastMessagePreview = :preview, " +
            "c.lastMessageAt = :now, " +
@@ -92,6 +97,7 @@ public interface ConversationRepository extends JpaRepository<Conversation, Long
     );
 
     @Modifying
+    @Transactional
     @Query("UPDATE Conversation c SET c.handlerMode = :mode WHERE c.id = :id")
     int updateHandlerMode(
             @Param("id") Long id,
@@ -99,6 +105,7 @@ public interface ConversationRepository extends JpaRepository<Conversation, Long
     );
 
     @Modifying
+    @Transactional
     @Query("UPDATE Conversation c SET c.status = :status WHERE c.id = :id")
     int updateStatus(
             @Param("id") Long id,
@@ -106,6 +113,7 @@ public interface ConversationRepository extends JpaRepository<Conversation, Long
     );
 
     @Modifying
+    @Transactional
     @Query("UPDATE Conversation c SET c.status = :status, c.handlerMode = :mode WHERE c.id = :id")
     int updateStatusAndHandlerMode(
             @Param("id") Long id,
@@ -114,11 +122,28 @@ public interface ConversationRepository extends JpaRepository<Conversation, Long
     );
 
     @Modifying
+    @Transactional
+    @Query("UPDATE Conversation c SET c.status = :status, c.handlerMode = :mode, c.handoffReason = :reason WHERE c.id = :id")
+    int updateHandoffStatus(
+            @Param("id") Long id,
+            @Param("status") ConversationStatus status,
+            @Param("mode") org.example.smashhub.chat.enums.HandlerMode mode,
+            @Param("reason") String reason
+    );
+
+    @Modifying
+    @Transactional
     @Query("UPDATE Conversation c SET c.adminUnreadCount = 0 WHERE c.id = :id")
     int resetAdminUnreadCount(@Param("id") Long id);
 
     @Modifying
+    @Transactional
     @Query("UPDATE Conversation c SET c.customerUnreadCount = 0 WHERE c.id = :id")
     int resetCustomerUnreadCount(@Param("id") Long id);
+
+    @Modifying
+    @Transactional
+    @Query("UPDATE Conversation c SET c.status = org.example.smashhub.chat.enums.ConversationStatus.OPEN, c.handlerMode = org.example.smashhub.chat.enums.HandlerMode.AI, c.assignedAdmin = null, c.handoffReason = null WHERE c.id = :id")
+    int resetToAiMode(@Param("id") Long id);
 }
 

@@ -172,6 +172,16 @@ public class CategoryServiceImpl implements CategoryService {
 
     @Override
     @Transactional(readOnly = true)
+    @Cacheable(cacheNames = "categoryRoots", key = "'all'")
+    public List<CategoryResponse> getRoots() {
+        return categoryRepository.findByParentIsNull().stream()
+                .sorted(Comparator.comparing(Category::getDisplayOrder, Comparator.nullsLast(Comparator.naturalOrder())))
+                .map(categoryMapper::toCategoryResponse)
+                .toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public List<Long> getSelfAndDescendantIds(Long categoryId) {
         List<Category> allCategories = categoryRepository.findAll();
         Map<Long, List<Long>> parentToChildrenMap = new HashMap<>();

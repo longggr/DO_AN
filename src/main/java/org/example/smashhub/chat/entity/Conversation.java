@@ -54,6 +54,9 @@ public class Conversation extends BaseEntity {
     @Builder.Default
     org.example.smashhub.chat.enums.HandlerMode handlerMode = org.example.smashhub.chat.enums.HandlerMode.AI;
 
+    @Column(name = "handoff_reason", length = 100)
+    String handoffReason;
+
     @Column(name = "last_message_preview", length = 255)
     String lastMessagePreview;
 

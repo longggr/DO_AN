@@ -61,6 +61,15 @@ public class ChatRestController {
                 .build();
     }
 
+    // 2b. Khách hàng / Người dùng: Chuyển lại về Trợ lý AI (Reset phiên chat)
+    @PostMapping("/conversations/switch-ai")
+    @PreAuthorize("isAuthenticated()")
+    public ApiResponse<ConversationResponse> switchToAiMode() {
+        return ApiResponse.<ConversationResponse>builder()
+                .result(chatService.switchToAiMode(getCurrentUsername()))
+                .build();
+    }
+
     // 3. Admin / Staff: Danh sách hội thoại phân trang & lọc
     @GetMapping("/admin/conversations")
     @PreAuthorize("hasAnyRole('ADMIN', 'STAFF')")

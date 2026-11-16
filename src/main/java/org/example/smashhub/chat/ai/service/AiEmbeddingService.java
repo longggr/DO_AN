@@ -49,6 +49,7 @@ public class AiEmbeddingService {
     ObjectMapper objectMapper;
 
     @Autowired(required = false)
+    @lombok.experimental.NonFinal
     MeterRegistry meterRegistry;
 
     public String computeSha256(String text) {

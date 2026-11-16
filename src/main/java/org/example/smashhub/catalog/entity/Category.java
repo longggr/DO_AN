@@ -28,6 +28,6 @@ public class Category extends BaseEntity {
     @Column(name = "display_order")
     Integer displayOrder;
 
-
-
+    @Column(name = "image_url", length = 1024)
+    String imageUrl;
 }

@@ -156,6 +156,7 @@ public enum ErrorCode {
     CHAT_ORDER_NOT_OWNED(2706, "You cannot share an order that does not belong to you", HttpStatus.FORBIDDEN),
     CONVERSATION_STATUS_INVALID(2707, "Invalid conversation status transition", HttpStatus.BAD_REQUEST),
     CHAT_ATTACHMENT_RATE_LIMITED(2708, "Too many file upload requests. Please try again later", HttpStatus.TOO_MANY_REQUESTS),
+    AI_RATE_LIMIT_EXCEEDED(2709, "AI request rate limit exceeded. Please try again later.", HttpStatus.TOO_MANY_REQUESTS),
     ;
 
     private int code = 1000;

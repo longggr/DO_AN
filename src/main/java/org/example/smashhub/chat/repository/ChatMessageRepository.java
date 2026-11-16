@@ -24,6 +24,9 @@ public interface ChatMessageRepository extends JpaRepository<ChatMessage, Long> 
     @EntityGraph(attributePaths = {"sender"})
     Page<ChatMessage> findByConversationId(Long conversationId, Pageable pageable);
 
+    @EntityGraph(attributePaths = {"sender"})
+    Page<ChatMessage> findByConversationIdAndVisibleToCustomerTrue(Long conversationId, Pageable pageable);
+
     @Modifying
     @Query("UPDATE ChatMessage m SET m.isRead = true WHERE m.conversation.id = :conversationId AND m.senderRole = :senderRole AND m.isRead = false")
     int markMessagesAsReadByRole(

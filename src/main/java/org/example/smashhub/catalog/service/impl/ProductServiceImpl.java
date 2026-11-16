@@ -50,6 +50,7 @@ public class ProductServiceImpl implements ProductService {
     CategoryService categoryService;
     ProductMapper productMapper;
     CatalogCacheEvictor cacheEvictor;
+    org.springframework.context.ApplicationEventPublisher eventPublisher;
 
     @Override
     @Transactional
@@ -76,6 +77,9 @@ public class ProductServiceImpl implements ProductService {
 
         // Cache brand chứa productCount nên phải làm mới.
         cacheEvictor.evictBrands();
+        if (eventPublisher != null) {
+            eventPublisher.publishEvent(org.example.smashhub.catalog.event.ProductChangedEvent.created(saved.getId()));
+        }
         return assembleFullProductResponse(saved);
     }
 
@@ -109,6 +113,9 @@ public class ProductServiceImpl implements ProductService {
 
         cacheEvictor.evictProduct(id);   // đã xóa luôn toàn bộ cache theo slug (kể cả slug cũ)
         cacheEvictor.evictBrands();
+        if (eventPublisher != null) {
+            eventPublisher.publishEvent(org.example.smashhub.catalog.event.ProductChangedEvent.updated(updated.getId()));
+        }
         return assembleFullProductResponse(updated);
     }
 
@@ -123,6 +130,9 @@ public class ProductServiceImpl implements ProductService {
 
         cacheEvictor.evictProduct(id);
         cacheEvictor.evictBrands();
+        if (eventPublisher != null) {
+            eventPublisher.publishEvent(org.example.smashhub.catalog.event.ProductChangedEvent.deleted(id));
+        }
     }
 
     @Override

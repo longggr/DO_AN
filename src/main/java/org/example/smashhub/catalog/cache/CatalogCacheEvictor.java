@@ -32,6 +32,7 @@ public class CatalogCacheEvictor {
     public void evictCategories() {
         runAfterCommit(() -> {
             clear("categoryTree");
+            clear("categoryRoots");
             clear("category");
             clear("product");
             clear("productBySlug");

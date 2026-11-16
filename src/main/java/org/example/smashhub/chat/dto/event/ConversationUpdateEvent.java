@@ -10,6 +10,7 @@ public record ConversationUpdateEvent(
         String customerUsername,
         ConversationStatus status,
         org.example.smashhub.chat.enums.HandlerMode handlerMode,
+        String handoffReason,
         String lastMessagePreview,
         LocalDateTime lastMessageAt,
         int customerUnreadCount,

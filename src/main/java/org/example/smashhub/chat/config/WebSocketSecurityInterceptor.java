@@ -39,6 +39,7 @@ import java.util.stream.Collectors;
 public class WebSocketSecurityInterceptor implements ChannelInterceptor {
 
     static Pattern CONVERSATION_TOPIC_PATTERN = Pattern.compile("^/topic/conversations/(\\d+)(/(typing|read))?$");
+    static Pattern ADMIN_TOPIC_PATTERN = Pattern.compile("^/topic/admin/conversations(/(\\d+))?$");
     static String ADMIN_TOPIC = "/topic/admin/conversations";
 
     JwtService jwtService;
@@ -154,8 +155,8 @@ public class WebSocketSecurityInterceptor implements ChannelInterceptor {
             return;
         }
 
-        // 2. Kênh quản trị viên /topic/admin/conversations
-        if (ADMIN_TOPIC.equals(destination)) {
+        // 2. Kênh quản trị viên /topic/admin/conversations hoặc /topic/admin/conversations/{id}
+        if (ADMIN_TOPIC_PATTERN.matcher(destination).matches()) {
             if (!hasStaffOrAdminRole(principal)) {
                 log.warn("Forbidden SUBSCRIBE to admin topic by user={}", principal.getName());
                 throw new AccessDeniedException("Only ADMIN or STAFF can subscribe to admin conversations topic");

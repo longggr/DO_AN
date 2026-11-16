@@ -1,6 +1,9 @@
 package org.example.smashhub.chat.ai.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.example.smashhub.catalog.repository.ProductImageRepository;
+import org.example.smashhub.catalog.repository.ProductRepository;
+import org.example.smashhub.catalog.repository.ProductVariantRepository;
 import org.example.smashhub.chat.ai.client.GeminiApiClient;
 import org.example.smashhub.chat.ai.client.dto.GeminiGenerateRequest;
 import org.example.smashhub.chat.ai.client.dto.GeminiGenerateResponse;
@@ -8,6 +11,9 @@ import org.example.smashhub.chat.ai.config.AiProperties;
 import org.example.smashhub.chat.ai.limiter.AiBudgetTracker;
 import org.example.smashhub.chat.ai.limiter.AiKillSwitch;
 import org.example.smashhub.chat.ai.limiter.GeminiRateLimiter;
+import org.example.smashhub.chat.ai.tool.OrderTools;
+import org.example.smashhub.chat.ai.tool.ProductTools;
+import org.example.smashhub.order.repository.OrderRepository;
 import org.example.smashhub.chat.ai.vectorstore.Document;
 import org.example.smashhub.chat.ai.vectorstore.SearchRequest;
 import org.example.smashhub.chat.ai.vectorstore.VectorStore;
@@ -76,6 +82,22 @@ class AiAssistantServiceTest {
     ResourceLoader resourceLoader;
     @Mock
     ThreadPoolTaskExecutor geminiTaskExecutor;
+    @Mock
+    ProductTools productTools;
+    @Mock
+    ProductRepository productRepository;
+    @Mock
+    ProductVariantRepository productVariantRepository;
+    @Mock
+    ProductImageRepository productImageRepository;
+    @Mock
+    OrderTools orderTools;
+    @Mock
+    OrderRepository orderRepository;
+    @Mock
+    org.springframework.data.redis.core.StringRedisTemplate redisTemplate;
+    @Mock
+    org.springframework.data.redis.core.ValueOperations<String, String> valueOperations;
 
     @Spy
     ObjectMapper objectMapper = new ObjectMapper();
@@ -113,9 +135,17 @@ class AiAssistantServiceTest {
                 chatMapper,
                 aiProperties,
                 objectMapper,
-                resourceLoader
+                resourceLoader,
+                productTools,
+                productRepository,
+                productVariantRepository,
+                productImageRepository,
+                orderTools,
+                orderRepository
         );
         aiAssistantService.setGeminiTaskExecutor(geminiTaskExecutor);
+        aiAssistantService.setRedisTemplate(redisTemplate);
+        when(redisTemplate.opsForValue()).thenReturn(valueOperations);
 
         customerUser = new User();
         customerUser.setId(10L);
@@ -155,8 +185,7 @@ class AiAssistantServiceTest {
 
         aiAssistantService.handleCustomerMessageAsync(100L, customerUser, "Tôi muốn gặp nhân viên tư vấn để giải quyết đơn hàng");
 
-        verify(conversationRepository).updateHandlerMode(100L, HandlerMode.HUMAN);
-        verify(conversationRepository).updateStatus(100L, ConversationStatus.OPEN);
+        verify(conversationRepository).updateHandoffStatus(eq(100L), eq(ConversationStatus.OPEN), eq(HandlerMode.HUMAN), eq("CUSTOMER_REQUESTED"));
         verifyNoInteractions(geminiApiClient);
         verify(chatBroadcaster, atLeastOnce()).broadcast(eq("/topic/conversations/100"), any());
     }
@@ -184,8 +213,7 @@ class AiAssistantServiceTest {
         // BẮT BUỘC: Không gọi LLM
         verifyNoInteractions(geminiApiClient);
         // Chuyển sang HUMAN
-        verify(conversationRepository).updateHandlerMode(100L, HandlerMode.HUMAN);
-        verify(conversationRepository).updateStatus(100L, ConversationStatus.OPEN);
+        verify(conversationRepository).updateHandoffStatus(eq(100L), eq(ConversationStatus.OPEN), eq(HandlerMode.HUMAN), eq("OUT_OF_DOMAIN"));
     }
 
     @Test
@@ -207,7 +235,7 @@ class AiAssistantServiceTest {
         aiAssistantService.handleCustomerMessageAsync(100L, customerUser, "Chính sách đổi trả thế nào?");
 
         verifyNoInteractions(geminiApiClient);
-        verify(conversationRepository).updateHandlerMode(100L, HandlerMode.HUMAN);
+        verify(conversationRepository).updateHandoffStatus(eq(100L), eq(ConversationStatus.OPEN), eq(HandlerMode.HUMAN), anyString());
     }
 
     @Test
@@ -257,5 +285,75 @@ class AiAssistantServiceTest {
         // Xác minh broadcast WebSocket
         verify(chatBroadcaster).broadcast(eq("/topic/conversations/100"), any(ChatMessageResponse.class));
         assertEquals("Trợ lý AI", mockRespDto.getSenderDisplayName());
+    }
+
+    @Test
+    @DisplayName("Pre-processing: Lọc ký tự rác/chào hỏi ngắn ('dd', 'alo') trả về lời chào mẫu với Zero API Cost")
+    void testShortJunkMessageFilterZeroApiCost() {
+        when(conversationRepository.findById(100L)).thenReturn(Optional.of(conversation));
+        when(userRepository.findByUsername(anyString())).thenReturn(Optional.of(customerUser));
+        when(chatMessageRepository.save(any(ChatMessage.class))).thenAnswer(inv -> inv.getArgument(0));
+        when(chatMapper.toChatMessageResponse(any())).thenReturn(new ChatMessageResponse());
+        when(valueOperations.increment(anyString())).thenReturn(1L);
+
+        aiAssistantService.handleCustomerMessageAsync(100L, customerUser, "alo");
+
+        // Tuyệt đối không gọi LLM hoặc vector store
+        verifyNoInteractions(geminiApiClient);
+        verifyNoInteractions(vectorStore);
+
+        // Lưu tin nhắn với model name rule-preprocessor
+        verify(chatMessageRepository).save(argThat(msg ->
+                msg.getSenderRole() == SenderRole.BOT &&
+                "rule-preprocessor".equals(msg.getAiModel()) &&
+                msg.getContent().contains("Dạ SmashHub xin chào! Em có thể hỗ trợ anh/chị tìm dòng vợt hay phụ kiện nào ạ?")
+        ));
+
+        verify(chatBroadcaster).broadcast(eq("/topic/conversations/100"), any());
+    }
+
+    @Test
+    @DisplayName("Pre-processing: Điều hướng câu hỏi mở phổ biến ('tư vấn vợt') trả về bộ 3 câu hỏi với Zero API Cost")
+    void testBroadAdvisoryQuestionnaireZeroApiCost() {
+        when(conversationRepository.findById(100L)).thenReturn(Optional.of(conversation));
+        when(userRepository.findByUsername(anyString())).thenReturn(Optional.of(customerUser));
+        when(chatMessageRepository.save(any(ChatMessage.class))).thenAnswer(inv -> inv.getArgument(0));
+        when(chatMapper.toChatMessageResponse(any())).thenReturn(new ChatMessageResponse());
+
+        aiAssistantService.handleCustomerMessageAsync(100L, customerUser, "tư vấn vợt");
+
+        // Tuyệt đối không gọi LLM hoặc vector store
+        verifyNoInteractions(geminiApiClient);
+        verifyNoInteractions(vectorStore);
+
+        // Lưu tin nhắn hỏi về 3 yếu tố: Lối chơi, Trình độ, Mức giá
+        verify(chatMessageRepository).save(argThat(msg ->
+                msg.getSenderRole() == SenderRole.BOT &&
+                "rule-preprocessor".equals(msg.getAiModel()) &&
+                msg.getContent().contains("Lối chơi") &&
+                msg.getContent().contains("Trình độ") &&
+                msg.getContent().contains("Mức giá")
+        ));
+
+        verify(chatBroadcaster).broadcast(eq("/topic/conversations/100"), any());
+    }
+
+    @Test
+    @DisplayName("Pre-processing: Khách nhập ký tự vô nghĩa 2 lần ('dd') tự động chuyển sang nhân viên tư vấn")
+    void testRepeatedGibberishHandoff() {
+        when(conversationRepository.findById(100L)).thenReturn(Optional.of(conversation));
+        when(conversationRepository.getReferenceById(100L)).thenReturn(conversation);
+        when(userRepository.findByUsername(anyString())).thenReturn(Optional.of(customerUser));
+        when(chatMessageRepository.save(any(ChatMessage.class))).thenAnswer(inv -> inv.getArgument(0));
+        when(chatMapper.toChatMessageResponse(any())).thenReturn(new ChatMessageResponse());
+
+        // Lần thứ 2 khách nhập 'dd'
+        when(valueOperations.increment(anyString())).thenReturn(2L);
+
+        aiAssistantService.handleCustomerMessageAsync(100L, customerUser, "dd");
+
+        verifyNoInteractions(geminiApiClient);
+        verify(conversationRepository).updateHandoffStatus(eq(100L), eq(ConversationStatus.OPEN), eq(HandlerMode.HUMAN), eq("GIBBERISH_REPEATED"));
+        verify(chatBroadcaster, atLeastOnce()).broadcast(eq("/topic/conversations/100"), any());
     }
 }

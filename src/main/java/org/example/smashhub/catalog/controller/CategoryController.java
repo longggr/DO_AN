@@ -26,11 +26,21 @@ public class CategoryController {
 
     // ---------------------------- công khai ----------------------------
 
-    /** Toàn bộ cây danh mục (đã sắp theo displayOrder) - dùng dựng menu. */
-    @GetMapping
-    public ApiResponse<List<CategoryResponse>> getTree() {
+    /** Toàn bộ cây danh mục hoặc chỉ danh mục cha (rootsOnly=true) */
+    @GetMapping({"", "/tree"})
+    public ApiResponse<List<CategoryResponse>> getCategories(
+            @RequestParam(name = "rootsOnly", required = false, defaultValue = "false") boolean rootsOnly
+    ) {
         return ApiResponse.<List<CategoryResponse>>builder()
-                .result(categoryService.getTree())
+                .result(rootsOnly ? categoryService.getRoots() : categoryService.getTree())
+                .build();
+    }
+
+    /** Danh mục cha cấp 1 (parent_id IS NULL) */
+    @GetMapping("/roots")
+    public ApiResponse<List<CategoryResponse>> getRoots() {
+        return ApiResponse.<List<CategoryResponse>>builder()
+                .result(categoryService.getRoots())
                 .build();
     }
 

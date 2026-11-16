@@ -24,4 +24,6 @@ public class CategoryRequest {
 
     @PositiveOrZero(message = "CATEGORY_DISPLAY_ORDER_INVALID")
     Integer displayOrder;
+
+    String imageUrl;
 }

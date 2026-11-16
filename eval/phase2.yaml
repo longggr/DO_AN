@@ -1,0 +1,324 @@
+# ==============================================================================
+# BỘ DỮ LIỆU ĐÁNH GIÁ TỰ ĐỘNG (EVALUATION SUITE) GIAI ĐOẠN 2 - SMASHHUB AI
+# Module: RAG Sản phẩm + Tool calling Live DB + PRODUCT_CARD
+# Tổng cộng: Đúng 40 kịch bản kiểm thử bao phủ toàn bộ nghiệp vụ tư vấn
+# ==============================================================================
+
+version: "2.0"
+test_suite: "SmashHub Phase 2 Product Advisory Evaluation"
+description: "Bộ 40 kịch bản kiểm thử đánh giá tính chính xác của tư vấn sản phẩm, gọi Tool, định dạng PRODUCT_CARD, giá/tồn kho live và các Guardrails an toàn."
+
+test_cases:
+  # ----------------------------------------------------------------------------
+  # NHÓM 1: TƯ VẤN VỢT THEO LỐI CHƠI (6 cases)
+  # ----------------------------------------------------------------------------
+  - id: 1
+    category: "RACKET_PLAY_STYLE"
+    question: "Mình thích đập cầu uy lực từ phía sau trong đánh đôi, shop tư vấn cây vợt phù hợp với?"
+    expected_behavior: "RECOMMEND_PRODUCT_CARD"
+    target_tool: "searchProducts"
+    expected_attributes: ["balance_point: Nặng đầu", "play_style: Tấn công"]
+    must_contain: ["nặng đầu", "tấn công", "cầu sau"]
+    must_not_contain: ["nhẹ đầu chuyên thủ"]
+
+  - id: 2
+    category: "RACKET_PLAY_STYLE"
+    question: "Mình hay đứng lưới đánh đôi, cần vợt phản tạt nhanh và thủ cầu linh hoạt."
+    expected_behavior: "RECOMMEND_PRODUCT_CARD"
+    target_tool: "searchProducts"
+    expected_attributes: ["balance_point: Nhẹ đầu/Cân bằng", "weight: 4U/5U"]
+    must_contain: ["nhẹ đầu", "phản tạt", "linh hoạt", "lưới"]
+    must_not_contain: ["đầm đầu nặng chuyên đập"]
+
+  - id: 3
+    category: "RACKET_PLAY_STYLE"
+    question: "Em muốn tìm vợt công thủ toàn diện, vừa điều cầu tốt vừa thủ chắc tay."
+    expected_behavior: "RECOMMEND_PRODUCT_CARD"
+    target_tool: "searchProducts"
+    expected_attributes: ["balance_point: Cân bằng"]
+    must_contain: ["công thủ toàn diện", "cân bằng", "điều cầu"]
+
+  - id: 4
+    category: "RACKET_PLAY_STYLE"
+    question: "Người mới tập chơi cổ tay còn yếu thì nên dùng dòng vợt nào dễ đánh?"
+    expected_behavior: "RECOMMEND_PRODUCT_CARD"
+    target_tool: "searchProducts"
+    expected_attributes: ["weight: 4U/5U", "stiffness: Dẻo"]
+    must_contain: ["thân dẻo", "trợ lực", "4U"]
+    must_not_contain: ["thân cứng 3U", "vợt chuyên nghiệp"]
+
+  - id: 5
+    category: "RACKET_PLAY_STYLE"
+    question: "Tư vấn vợt cho nam đánh đôi phong trào lực tay trung bình khá."
+    expected_behavior: "RECOMMEND_PRODUCT_CARD"
+    target_tool: "searchProducts"
+    must_contain: ["đánh đôi", "4U", "trung bình"]
+
+  - id: 6
+    category: "RACKET_PLAY_STYLE"
+    question: "Bạn nữ mới chơi cầu lông cần cây vợt nhẹ nhàng màu sắc nữ tính."
+    expected_behavior: "RECOMMEND_PRODUCT_CARD"
+    target_tool: "searchProducts"
+    must_contain: ["nhẹ", "5U", "dễ chơi"]
+
+  # ----------------------------------------------------------------------------
+  # NHÓM 2: TƯ VẤN VỢT THEO KHOẢNG NGÂN SÁCH (6 cases)
+  # ----------------------------------------------------------------------------
+  - id: 7
+    category: "RACKET_BUDGET"
+    question: "Tài chính dưới 1 triệu có cây vợt nào chính hãng đánh bền không shop?"
+    expected_behavior: "RECOMMEND_PRODUCT_CARD"
+    target_tool: "searchProducts"
+    max_price: 1000000
+    must_contain: ["dưới 1 triệu"]
+    must_not_contain: ["3.000.000", "4.000.000"]
+
+  - id: 8
+    category: "RACKET_BUDGET"
+    question: "Tầm giá 1 đến 2 triệu cho người chơi phong trào thì cây vợt nào ngon nhất?"
+    expected_behavior: "RECOMMEND_PRODUCT_CARD"
+    target_tool: "searchProducts"
+    min_price: 1000000
+    max_price: 2000000
+    must_contain: ["tầm giá 1 - 2 triệu", "phong trào"]
+
+  - id: 9
+    category: "RACKET_BUDGET"
+    question: "Mình có ngân sách tầm 2 - 3 triệu cần tìm vợt Yonex hoặc Lining chính hãng."
+    expected_behavior: "RECOMMEND_PRODUCT_CARD"
+    target_tool: "searchProducts"
+    min_price: 2000000
+    max_price: 3000000
+    must_contain: ["Yonex", "Lining"]
+
+  - id: 10
+    category: "RACKET_BUDGET"
+    question: "Dòng vợt cao cấp trên 4 triệu của tuyển thủ hay dùng có mẫu nào sẵn hàng?"
+    expected_behavior: "RECOMMEND_PRODUCT_CARD"
+    target_tool: "searchProducts"
+    min_price: 4000000
+    must_contain: ["cao cấp", "Pro"]
+
+  - id: 11
+    category: "RACKET_BUDGET"
+    question: "Em là sinh viên có khoảng 600k muốn mua vợt tập thể dục hàng ngày."
+    expected_behavior: "RECOMMEND_PRODUCT_CARD"
+    target_tool: "searchProducts"
+    max_price: 800000
+    must_contain: ["sinh viên", "tiết kiệm", "tập luyện"]
+
+  - id: 12
+    category: "RACKET_BUDGET"
+    question: "Tầm 1 triệu rưỡi mua vợt công thủ toàn diện của thương hiệu nào tốt?"
+    expected_behavior: "RECOMMEND_PRODUCT_CARD"
+    target_tool: "searchProducts"
+    min_price: 1300000
+    max_price: 1700000
+    must_contain: ["1.5 triệu", "công thủ"]
+
+  # ----------------------------------------------------------------------------
+  # NHÓM 3: TƯ VẤN GIÀY THEO FORM CHÂN & CÔNG NGHỆ (6 cases)
+  # ----------------------------------------------------------------------------
+  - id: 13
+    category: "SHOES_ADVISORY"
+    question: "Chân mình bè ngang to (bàn chân bè) thì đi giày cầu lông loại nào không bị đau ngón út?"
+    expected_behavior: "RECOMMEND_PRODUCT_CARD"
+    target_tool: "searchProducts"
+    expected_attributes: ["shoe_form: Bè rộng 3E/4E"]
+    must_contain: ["form bè", "bàn chân bè", "Wide", "3E"]
+    must_not_contain: ["form thon hẹp"]
+
+  - id: 14
+    category: "SHOES_ADVISORY"
+    question: "Bàn chân mình thon dài bình thường thì chọn mẫu giày nào ôm chân tốt?"
+    expected_behavior: "RECOMMEND_PRODUCT_CARD"
+    target_tool: "searchProducts"
+    must_contain: ["form tiêu chuẩn", "ôm chân", "thon"]
+
+  - id: 15
+    category: "SHOES_ADVISORY"
+    question: "Mình hay bị đau khớp gối sau khi đánh, cần giày có đệm êm giảm chấn tối đa."
+    expected_behavior: "RECOMMEND_PRODUCT_CARD"
+    target_tool: "searchProducts"
+    must_contain: ["giảm chấn", "đệm êm", "Power Cushion"]
+
+  - id: 16
+    category: "SHOES_ADVISORY"
+    question: "Tìm giày cầu lông nhẹ bốc bước chân nhanh cho vị trí bắt lưới."
+    expected_behavior: "RECOMMEND_PRODUCT_CARD"
+    target_tool: "searchProducts"
+    must_contain: ["siêu nhẹ", "tốc độ", "di chuyển nhanh"]
+
+  - id: 17
+    category: "SHOES_ADVISORY"
+    question: "Tầm giá hơn 1 triệu có đôi giày cầu lông nào êm bền không shop?"
+    expected_behavior: "RECOMMEND_PRODUCT_CARD"
+    target_tool: "searchProducts"
+    min_price: 1000000
+    max_price: 1800000
+    must_contain: ["giày", "êm ái"]
+
+  - id: 18
+    category: "SHOES_ADVISORY"
+    question: "Mình chơi sân bê tông ngoài trời thì nên chọn đế giày cầu lông loại nào lâu mòn?"
+    expected_behavior: "RECOMMEND_PRODUCT_CARD"
+    target_tool: "searchProducts"
+    must_contain: ["sân bê tông", "chống mài mòn", "đế cao su"]
+
+  # ----------------------------------------------------------------------------
+  # NHÓM 4: CƯỚC CẦU LÔNG & PHỤ KIỆN (5 cases)
+  # ----------------------------------------------------------------------------
+  - id: 19
+    category: "STRINGS_AND_ACC"
+    question: "Loại cước nào bền nhất, đánh lâu đứt tiết kiệm chi phí cho người mới?"
+    expected_behavior: "RECOMMEND_PRODUCT_CARD"
+    target_tool: "searchProducts"
+    must_contain: ["BG65", "bền", "lâu đứt"]
+
+  - id: 20
+    category: "STRINGS_AND_ACC"
+    question: "Mình thích tiếng nổ đanh to và trợ lực nảy cầu tốt thì căng cước gì?"
+    expected_behavior: "RECOMMEND_PRODUCT_CARD"
+    target_tool: "searchProducts"
+    must_contain: ["tiếng nổ", "trợ lực", "BG66 Ultimax"]
+
+  - id: 21
+    category: "STRINGS_AND_ACC"
+    question: "Cước cầu lông chuyên để gài cầu và kiểm soát đường cầu chính xác là loại nào?"
+    expected_behavior: "RECOMMEND_PRODUCT_CARD"
+    target_tool: "searchProducts"
+    must_contain: ["kiểm soát", "Aerobite"]
+
+  - id: 22
+    category: "STRINGS_AND_ACC"
+    question: "Em là nữ mới tập chơi thì nên đan cước mấy kg (bao nhiêu lbs) là vừa?"
+    expected_behavior: "DIRECT_ANSWER"
+    must_contain: ["9.5 - 10.5 kg", "21 - 23 lbs"]
+    must_not_contain: ["12 kg", "13 kg"]
+
+  - id: 23
+    category: "STRINGS_AND_ACC"
+    question: "Quấn cán vợt chống mồ hôi tay loại nào bám tay êm nhất?"
+    expected_behavior: "RECOMMEND_PRODUCT_CARD"
+    target_tool: "searchProducts"
+    must_contain: ["quấn cán", "thấm hút mồ hôi", "AC102EX"]
+
+  # ----------------------------------------------------------------------------
+  # NHÓM 5: CÂU HỎI MƠ HỒ (GUARDRAIL: HỎI LÀM RÕ 1-2 CÂU, KHÔNG VỘI TUNG THẺ) (5 cases)
+  # ----------------------------------------------------------------------------
+  - id: 24
+    category: "AMBIGUOUS_QUERY"
+    question: "Tư vấn cho mình cây vợt."
+    expected_behavior: "CLARIFY_QUESTION"
+    must_contain: ["lối chơi", "ngân sách", "trình độ"]
+    must_not_contain: ["PRODUCT_CARD", "bạn mua ngay cây này đi"]
+
+  - id: 25
+    category: "AMBIGUOUS_QUERY"
+    question: "Shop có đôi giày nào đẹp không?"
+    expected_behavior: "CLARIFY_QUESTION"
+    must_contain: ["size chân", "form chân", "tài chính"]
+
+  - id: 26
+    category: "AMBIGUOUS_QUERY"
+    question: "Nên mua vợt gì bây giờ shop ơi?"
+    expected_behavior: "CLARIFY_QUESTION"
+    must_contain: ["tấn công hay phòng thủ", "ngân sách khoảng bao nhiêu"]
+
+  - id: 27
+    category: "AMBIGUOUS_QUERY"
+    question: "Vợt nào tốt nhất hiện nay vậy bạn?"
+    expected_behavior: "CLARIFY_QUESTION"
+    must_contain: ["phù hợp với lối chơi", "tay nghề"]
+
+  - id: 28
+    category: "AMBIGUOUS_QUERY"
+    question: "Chọn size giày cầu lông như thế nào?"
+    expected_behavior: "DIRECT_ANSWER"
+    must_contain: ["đo chiều dài bàn chân", "cộng thêm 0.5 - 1cm"]
+
+  # ----------------------------------------------------------------------------
+  # NHÓM 6: HẾT HÀNG & DỮ LIỆU LIVE (GUARDRAIL: 0% GIỚI THIỆU SẢN PHẨM HẾT HÀNG) (4 cases)
+  # ----------------------------------------------------------------------------
+  - id: 29
+    category: "OUT_OF_STOCK"
+    question: "Cây vợt Yonex Voltric Z-Force II shop còn hàng không?"
+    expected_behavior: "STOCK_CHECK_OR_REFUSAL"
+    target_tool: "checkStock"
+    must_contain: ["hiện đã hết hàng", "tạm hết hàng"]
+    must_not_contain: ["sẵn hàng giao ngay"]
+
+  - id: 30
+    category: "OUT_OF_STOCK"
+    question: "Có cây vợt 3U nào dưới 500k còn hàng sẵn ship ngay không?"
+    expected_behavior: "HONEST_REFUSAL"
+    must_contain: ["hiện không có", "chưa có mẫu sẵn"]
+
+  - id: 31
+    category: "OUT_OF_STOCK"
+    question: "Shop có bán giày cầu lông Yonex size 47 không?"
+    expected_behavior: "HONEST_REFUSAL"
+    must_contain: ["size lớn", "chưa có sẵn", "liên hệ nhân viên"]
+
+  - id: 32
+    category: "OUT_OF_STOCK"
+    question: "Mẫu vợt Astrox 100ZZ Kurenai bản limited shop có sẵn không?"
+    expected_behavior: "STOCK_CHECK_OR_REFUSAL"
+    target_tool: "checkStock"
+    must_contain: ["tồn kho thực tế", "hết hàng"]
+
+  # ----------------------------------------------------------------------------
+  # NHÓM 7: NGOÀI PHẠM VI & CHUYỂN NHÂN VIÊN (HANDOFF GUARDRAIL) (4 cases)
+  # ----------------------------------------------------------------------------
+  - id: 33
+    category: "OUT_OF_SCOPE_HANDOFF"
+    question: "Shop có bán vợt tennis Wilson hay giày đá bóng cỏ nhân tạo không?"
+    expected_behavior: "REFUSAL_OUT_OF_SCOPE"
+    must_contain: ["chuyên về môn cầu lông", "không kinh doanh tennis"]
+
+  - id: 34
+    category: "OUT_OF_SCOPE_HANDOFF"
+    question: "SmashHub có tuyển nhân viên bán hàng ca tối ở chi nhánh Cầu Giấy không?"
+    expected_behavior: "HANDOFF_HUMAN"
+    must_contain: ["chuyển cuộc trò chuyện sang nhân viên"]
+
+  - id: 35
+    category: "OUT_OF_SCOPE_HANDOFF"
+    question: "Tôi nhận hàng mà bị giao sai mẫu vợt, cho tôi gặp nhân viên ngay lập tức để xử lý đổi trả!"
+    expected_behavior: "HANDOFF_HUMAN"
+    must_contain: ["chuyên viên tư vấn", "hỗ trợ bạn ngay"]
+
+  - id: 36
+    category: "OUT_OF_SCOPE_HANDOFF"
+    question: "Câu lạc bộ của tôi muốn đặt mua 30 cây vợt cùng lúc, shop có chiết khấu riêng không?"
+    expected_behavior: "HANDOFF_HUMAN"
+    must_contain: ["chuyên viên", "số lượng lớn", "báo giá"]
+
+  # ----------------------------------------------------------------------------
+  # NHÓM 8: SO SÁNH & THÔNG SỐ KỸ THUẬT LIVE (GUARDRAIL: KHÔNG BỊA THÔNG SỐ) (4 cases)
+  # ----------------------------------------------------------------------------
+  - id: 37
+    category: "SPECS_AND_COMPARISON"
+    question: "So sánh giúp mình cây Astrox 77 Pro và Arcsaber 11 Pro khác nhau điểm nào?"
+    expected_behavior: "COMPARISON_ANSWER"
+    target_tool: "getProductDetail"
+    must_contain: ["Astrox 77 Pro", "Arcsaber 11 Pro", "nặng đầu", "cân bằng"]
+
+  - id: 38
+    category: "SPECS_AND_COMPARISON"
+    question: "Vợt 3U và 4U khác nhau như thế nào, người mới nên chọn bản nào?"
+    expected_behavior: "DIRECT_ANSWER"
+    must_contain: ["3U nặng hơn", "4U nhẹ hơn", "người mới nên chọn 4U"]
+
+  - id: 39
+    category: "SPECS_AND_COMPARISON"
+    question: "Điểm cân bằng của vợt là 305mm thì là vợt nặng đầu hay nhẹ đầu?"
+    expected_behavior: "DIRECT_ANSWER"
+    must_contain: ["nặng đầu", "thiên công", "trên 295mm"]
+
+  - id: 40
+    category: "SPECS_AND_COMPARISON"
+    question: "Mức căng tối đa ghi trên thân vợt là 28 lbs thì quy đổi ra được bao nhiêu kg?"
+    expected_behavior: "DIRECT_ANSWER"
+    must_contain: ["khoảng 12.5 - 12.7 kg", "1 kg xấp xỉ 2.2 lbs"]
+

@@ -18,6 +18,8 @@ public interface AiKnowledgeChunkRepository extends JpaRepository<AiKnowledgeChu
 
     List<AiKnowledgeChunk> findByEntityTypeAndEntityId(String entityType, Long entityId);
 
+    void deleteByEntityTypeAndEntityId(String entityType, Long entityId);
+
     Page<AiKnowledgeChunk> findByStatus(String status, Pageable pageable);
 }
 

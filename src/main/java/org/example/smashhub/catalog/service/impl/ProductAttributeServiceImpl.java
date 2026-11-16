@@ -26,6 +26,7 @@ public class ProductAttributeServiceImpl implements ProductAttributeService {
     ProductAttributeRepository attributeRepository;
     ProductMapper productMapper;
     CatalogCacheEvictor cacheEvictor;
+    org.springframework.context.ApplicationEventPublisher eventPublisher;
 
     @Override
     @Transactional
@@ -41,6 +42,9 @@ public class ProductAttributeServiceImpl implements ProductAttributeService {
 
         ProductAttribute saved = attributeRepository.save(attribute);
         cacheEvictor.evictProduct(productId);
+        if (eventPublisher != null) {
+            eventPublisher.publishEvent(org.example.smashhub.catalog.event.ProductChangedEvent.updated(productId));
+        }
         return productMapper.toProductAttributeResponse(saved);
     }
 
@@ -55,6 +59,9 @@ public class ProductAttributeServiceImpl implements ProductAttributeService {
 
         ProductAttribute saved = attributeRepository.save(attribute);
         cacheEvictor.evictProduct(productId);
+        if (eventPublisher != null) {
+            eventPublisher.publishEvent(org.example.smashhub.catalog.event.ProductChangedEvent.updated(productId));
+        }
         return productMapper.toProductAttributeResponse(saved);
     }
 
@@ -66,5 +73,8 @@ public class ProductAttributeServiceImpl implements ProductAttributeService {
 
         attributeRepository.delete(attribute);
         cacheEvictor.evictProduct(productId);
+        if (eventPublisher != null) {
+            eventPublisher.publishEvent(org.example.smashhub.catalog.event.ProductChangedEvent.updated(productId));
+        }
     }
 }

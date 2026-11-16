@@ -33,6 +33,10 @@ public class AiProperties {
     CacheConfig cache = new CacheConfig();
     TokenEstimation tokenEstimation = new TokenEstimation();
     RagConfig rag = new RagConfig();
+    ToolsConfig tools = new ToolsConfig();
+    SyncConfig sync = new SyncConfig();
+    HandoffConfig handoff = new HandoffConfig();
+    CopilotConfig copilot = new CopilotConfig();
 
     @Getter
     @Setter
@@ -104,8 +108,37 @@ public class AiProperties {
     public static class RagConfig {
         private int maxContextProducts = 3;
         private int maxContextOrders = 2;
-        private double similarityThreshold = 0.65;
+        private double similarityThreshold = 0.50;
         private int maxHistoryMessages = 6;
+        private int maxRecommendedProducts = 3;
+    }
+
+    @Getter
+    @Setter
+    public static class ToolsConfig {
+        private int maxIterations = 3;
+        private int maxLlmCallsPerAnswer = 4;
+        private long searchCacheTtlSeconds = 300L; // 5 minutes
+    }
+
+    @Getter
+    @Setter
+    public static class SyncConfig {
+        private String productCron = "0 0 2 * * ?";
+    }
+
+    @Getter
+    @Setter
+    public static class HandoffConfig {
+        private int consecutiveUncertainThreshold = 2;
+        private long uncertainCacheTtlSeconds = 3600L;
+    }
+
+    @Getter
+    @Setter
+    public static class CopilotConfig {
+        private int rateLimitRpm = 10;
+        private int maxDraftVariants = 2;
     }
 
     public ModelLimit getModelLimit(String modelName) {
